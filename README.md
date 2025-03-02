@@ -45,8 +45,8 @@ Here are some examples:
           ["<leader>ld"] = "describe",
           ["<leader>ls"] = "show_sample",
           ["<leader>lw"] = "show_filter",
-          ["<leader>lv"] = "distribution",
-          ["<leader>lc"] = "yank_columns",
+          ["<leader>lv"] = "show_distribution",
+          ["<leader>ly"] = "yank_columns",
           ["<leader>lo"] = "list_objects",
         },
       },
@@ -74,8 +74,8 @@ use {
           ["<leader>ld"] = "describe",
           ["<leader>ls"] = "show_sample",
           ["<leader>lw"] = "show_filter",
-          ["<leader>lv"] = "distribution",
-          ["<leader>lc"] = "yank_columns",
+          ["<leader>lv"] = "show_distribution",
+          ["<leader>ly"] = "yank_columns",
           ["<leader>lo"] = "list_objects",
         },
       },
@@ -110,9 +110,9 @@ de.setup()
 vim.keymap.set('n', '<leader>le', function() de.explore() end, { desc = 'DB explore' })
 vim.keymap.set('n', '<leader>ld', de.action("describe"), { desc = 'DB describe object' })
 vim.keymap.set('n', '<leader>ls', de.action("show_sample"), { desc = 'DB show sample records' })
-vim.keymap.set('n', '<leader>lw', de.action("show_filter"), { desc = 'DB show records with filter condition' })
+vim.keymap.set('n', '<leader>lw', de.action("show_filter"), { desc = 'DB show records with filter' })
 vim.keymap.set('n', '<leader>lv', de.action("show_distribution"), { desc = 'DB values distribution' })
-vim.keymap.set('n', '<leader>lc', de.action("yank_columns"), { desc = 'DB yank columns' })
+vim.keymap.set('n', '<leader>ly', de.action("yank_columns"), { desc = 'DB yank columns' })
 vim.keymap.set('n', '<leader>lo', de.action("list_objects"), { desc = 'DB list objects' })
 ```
 
@@ -127,8 +127,8 @@ require('dadbod-explorer').setup({
       ["<leader>ld"] = "describe",
       ["<leader>ls"] = "show_sample",
       ["<leader>lw"] = "show_filter",
-      ["<leader>lv"] = "distribution",
-      ["<leader>lc"] = "yank_columns",
+      ["<leader>lv"] = "show_distribution",
+      ["<leader>ly"] = "yank_columns",
       ["<leader>lo"] = "list_objects",
     },
   },
@@ -176,7 +176,7 @@ The examples above use `<leader>` mappings; feel free to customize these to your
 
 You can extend `dadbod-explorer` to support other databases by creating custom adapters. An adapter is a Lua module that defines a `get_actions` function, which returns a table of actions supported by the database.
 
-In addition to the predefined actions (`describe`, `show_sample`, `show_filter`, `yank_columns`, `list_objects`, and `distribution`), adapters can also implement custom actions specific to the database adapter.
+In addition to the predefined actions (`describe`, `show_sample`, `show_filter`, `show_distribution`, `yank_columns`, and `list_objects`), adapters can also implement custom actions specific to the database adapter.
 
 See the existing adapters (`lua/dadbod-explorer/adapter/postgresql/init.lua` and `lua/dadbod-explorer/adapter/bigquery/init.lua`) for examples of how to implement adapters. The key parts are:
 

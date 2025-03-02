@@ -43,8 +43,8 @@ Example (using `setup()`): >lua
                 ["<leader>ld"] = "describe",
                 ["<leader>ls"] = "show_sample",
                 ["<leader>lw"] = "show_filter",
-                ["<leader>lv"] = "distribution",
-                ["<leader>lc"] = "yank_columns",
+                ["<leader>lv"] = "show_distribution",
+                ["<leader>ly"] = "yank_columns",
                 ["<leader>lo"] = "list_objects",
             },
         },
@@ -58,7 +58,7 @@ Alternatively, you can set keymaps directly using `vim.keymap.set`: >lua
     vim.keymap.set('n', '<leader>ls', de.action("show_sample"))
     vim.keymap.set('n', '<leader>lw', de.action("show_filter"))
     vim.keymap.set('n', '<leader>lv', de.action("show_distribution"))
-    vim.keymap.set('n', '<leader>lc', de.action("yank_columns"))
+    vim.keymap.set('n', '<leader>ly', de.action("yank_columns"))
     vim.keymap.set('n', '<leader>lo', de.action("list_objects"))
 <
 
