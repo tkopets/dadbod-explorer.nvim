@@ -1,0 +1,153 @@
+*dadbod-explorer.txt*  Browse DB objects and data in Neovim, using vim-dadbod
+
+                                                             *dadbod-explorer*
+==============================================================================
+CONTENTS                                            *dadbod-explorer-contents*
+
+1. Intro .......................................... |dadbod-explorer-intro|
+2. Features ....................................... |dadbod-explorer-features|
+3. Configuration .................................. |dadbod-explorer-config|
+4. Usage .......................................... |dadbod-explorer-usage|
+5. Adapters ....................................... |dadbod-explorer-adapters|
+
+==============================================================================
+INTRO                                                  *dadbod-explorer-intro*
+
+Dadbod Explorer is a Neovim plugin that provides a simple UI for interacting
+with databases. It uses |dadbod.txt| (https://github.com/tpope/vim-dadbod) for
+the underlying database connection and query execution.
+
+==============================================================================
+FEATURES                                            *dadbod-explorer-features*
+
+- List tables, views, and functions
+- Describe table/view/function structure
+- Show sample data from a table
+- Show records with a filter condition
+- Yank table column names to the default register
+- Show value distribution for a column
+- Extensible with custom adapters
+
+==============================================================================
+CONFIGURATION                                         *dadbod-explorer-config*
+
+The plugin can be configured using the `setup()` function. The primary
+configuration option is `mappings`, which allows you to define custom
+keybindings.
+
+Example (using `setup()`): >lua
+    require('dadbod-explorer').setup({
+        mappings = {
+            n = {
+                ["<leader>le"] = "explore",
+                ["<leader>ld"] = "describe",
+                ["<leader>ls"] = "show_sample",
+                ["<leader>lw"] = "show_filter",
+                ["<leader>lv"] = "distribution",
+                ["<leader>lc"] = "yank_columns",
+                ["<leader>lo"] = "list_objects",
+            },
+        },
+    })
+<
+Alternatively, you can set keymaps directly using `vim.keymap.set`: >lua
+    local de = require('dadbod-explorer')
+    de.setup()
+    vim.keymap.set('n', '<leader>le', function() de.explore() end)
+    vim.keymap.set('n', '<leader>ld', de.action("describe"))
+    vim.keymap.set('n', '<leader>ls', de.action("show_sample"))
+    vim.keymap.set('n', '<leader>lw', de.action("show_filter"))
+    vim.keymap.set('n', '<leader>lv', de.action("show_distribution"))
+    vim.keymap.set('n', '<leader>lc', de.action("yank_columns"))
+    vim.keymap.set('n', '<leader>lo', de.action("list_objects"))
+<
+
+==============================================================================
+USAGE                                                  *dadbod-explorer-usage*
+
+1.  Connect to a Database:
+
+Configure your database connection URLs as described in the vim-dadbod
+documentation (|dadbod-urls|). You can use global variables (Lua or
+Vimscript) or the `$DATABASE_URL` environment variable.
+
+Examples:
+
+Lua (in `init.lua`): >lua
+    vim.g.db_url = 'postgresql://user@host:port/database'
+<
+Vimscript (in `init.vim` or `vimrc`): >vim
+    let g:db_url = 'postgresql://user@host:port/database'
+<
+Environment Variable (in your shell's configuration): >bash
+export DATABASE_URL='postgresql://user@host:port/database'
+<
+
+2.  Explore:
+
+Invoke the `explore()` or one of the other actions: >lua
+    require('dadbod-explorer').explore()
+<
+
+Use the configured keybindings (default mappings are shown below) to
+invoke actions. The plugin will prompt you for input when necessary (e.g.,
+to select a table or enter a filter condition).
+
+Default Mappings:
+
+| Keybinding | Action                             |
+| ---------- | ---------------------------------- |
+| <leader>le | Explore (start the explorer)       |
+| <leader>ld | Describe object                    |
+| <leader>ls | Show sample records                |
+| <leader>lw | Show records with filter condition |
+| <leader>lv | Show value distribution            |
+| <leader>lc | Yank column names                  |
+| <leader>lo | List objects                       |
+
+==============================================================================
+ADAPTERS                                            *dadbod-explorer-adapters*
+
+Dadbod Explorer supports multiple database systems through adapters. Adapters
+are Lua modules that define how to interact with a specific database.
+
+Pre-built adapters:
+- PostgreSQL
+- BigQuery
+
+==============================================================================
+ADDING CUSTOM ADAPTERS                       *dadbod-explorer-custom-adapters*
+
+
+Create a Lua module that defines a `get_actions()` function. This function
+should return a table where keys are action names (strings) and values are
+tables defining the actions.
+
+Example action definition: >lua
+    {
+        label = "My Custom Action",
+        object_list = function(conn_str)
+            -- Return a list of objects (e.g., table names)
+            return { "table1", "table2", "table3" }
+        end,
+        format_item = function(item)
+            -- Format the object for display in the list
+            return item
+        end,
+        process_item = function(conn, item)
+            -- Perform the action (e.g., execute a query)
+            local query = "select * from " .. item
+            -- execute the query using vim-dadbod
+            require('dadbod-explorer.dadbod').run_sql(conn, query)
+        end,
+    }
+<
+
+Register your adapter using: >lua
+    require("dadbod-explorer").register_adapter(your_adapter_module)
+<
+See the existing adapters
+(`lua/dadbod-explorer/adapter/postgresql/init.lua` and
+`lua/dadbod-explorer/adapter/bigquery/init.lua`) for complete examples.
+
+vim:tw=78:ts=8:ft=help:norl:

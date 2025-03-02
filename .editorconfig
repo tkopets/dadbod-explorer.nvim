@@ -1,0 +1,16 @@
+root = true
+
+[*]
+end_of_line = lf
+insert_final_newline = true
+
+[*.lua]
+indent_style = space
+indent_size = 4
+
+align_continuous_assign_statement = false
+align_function_params = false
+align_continuous_assign_statement = false
+align_continuous_rect_table_field = false
+align_array_table = false
+align_continuous_inline_comment = false
