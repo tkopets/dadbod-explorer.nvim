@@ -1,4 +1,5 @@
 local M = {}
+local de = require("dadbod-explorer")
 local dadbod = require("dadbod-explorer.dadbod")
 local adapter_utils = require("dadbod-explorer.adapter")
 local queries = require("dadbod-explorer.adapter.postgresql.queries")
@@ -85,9 +86,10 @@ local actions = {
         object_list = object_list,
         format_item = function(obj) return obj.name end,
         process_item = function(conn, obj)
+            local sample_size = de.get_sample_size(conn, "show_sample", obj)
             dadbod.run_sql(
                 conn,
-                string.format([[select * from %s limit 50]], obj.name)
+                string.format([[select * from %s limit %s]], obj.name, sample_size)
             )
         end,
     },

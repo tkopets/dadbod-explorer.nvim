@@ -13,6 +13,9 @@ local actions_order = {
     "list_objects"
 }
 local cache = {}
+local plugin_opts = {
+    sample_size = 100,
+}
 
 local function get_adapter(conn)
     if not conn then return nil end
@@ -179,12 +182,29 @@ function M.action(action_name)
     end
 end
 
+function M.get_sample_size(conn, action_name, db_object_name)
+  local setting = plugin_opts.sample_size
+  if type(setting) == 'number' then
+    return setting
+  elseif type(setting) == 'function' then
+    return setting(conn, action_name, db_object_name)
+  else
+    return 100
+  end
+end
+
 function M.setup(opts)
     if dadbod.has_dadbod() then
         require("dadbod-explorer.adapter.postgresql")
         require("dadbod-explorer.adapter.bigquery")
     else
         utils.handle_error("vim-dadbod is required but not installed.")
+    end
+
+    if opts then
+      for k, v in pairs(opts) do
+        plugin_opts[k] = v
+      end
     end
 
     if opts and opts.mappings then

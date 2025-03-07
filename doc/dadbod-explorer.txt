@@ -35,6 +35,10 @@ The plugin can be configured using the `setup()` function. The primary
 configuration option is `mappings`, which allows you to define custom
 keybindings.
 
+`sample_size`:  (Default: `100`) Controls the number of rows returned by the
+`show_sample` action.
+**Note:** This option is not supported by the BigQuery adapter.
+
 Example (using `setup()`): >lua
     require('dadbod-explorer').setup({
         mappings = {
@@ -105,6 +109,11 @@ Default Mappings:
 | <leader>lc | Yank column names                  |
 | <leader>lo | List objects                       |
 
+The `show_sample` action displays a limited number of rows from a table.
+The number of rows is controlled by the `sample_size` option (see
+|dadbod-explorer-configuration|).
+**Note:** The `sample_size` option is not supported by the BigQuery adapter.
+
 ==============================================================================
 ADAPTERS                                            *dadbod-explorer-adapters*
 
@@ -142,7 +151,9 @@ Example action definition: >lua
         end,
     }
 <
-
+To get `sample_size` for `show_sample` action you can use: >lua
+    require('dadbod-explorer').get_sample_size(conn, action_name, obj)
+<
 Register your adapter using: >lua
     require("dadbod-explorer").register_adapter(your_adapter_module)
 <
