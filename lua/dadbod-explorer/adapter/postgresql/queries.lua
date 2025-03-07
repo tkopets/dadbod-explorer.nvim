@@ -44,7 +44,9 @@ M.objects = {
             (%s)
             union all
             (%s)
-        ) as x]],
+        ) as x
+        order by 1
+        ]],
         sql_tables,
         sql_views
     )

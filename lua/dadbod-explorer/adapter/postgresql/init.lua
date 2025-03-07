@@ -53,6 +53,8 @@ local function object_list(conn)
     for _, obj in ipairs(object_list_functions(conn)) do
         table.insert(items, { kind = ObjKind.FUNC, name = obj })
     end
+
+    table.sort(items, function(a, b) return a.name < b.name end)
     return items
 end
 

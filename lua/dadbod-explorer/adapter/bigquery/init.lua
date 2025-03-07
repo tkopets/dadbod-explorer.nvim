@@ -78,6 +78,7 @@ local function object_list_relations(conn)
         table.insert(items, { kind = ObjKind.VIEW, name = obj })
     end
 
+    table.sort(items, function(a, b) return a.name < b.name end)
     return items
 end
 
