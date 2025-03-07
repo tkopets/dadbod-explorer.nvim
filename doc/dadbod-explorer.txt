@@ -106,7 +106,7 @@ Default Mappings:
 | <leader>ls | Show sample records                |
 | <leader>lw | Show records with filter condition |
 | <leader>lv | Show value distribution            |
-| <leader>lc | Yank column names                  |
+| <leader>ly | Yank column names                  |
 | <leader>lo | List objects                       |
 
 The `show_sample` action displays a limited number of rows from a table.
