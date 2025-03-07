@@ -3,6 +3,17 @@ local M = {}
 local utils = require("dadbod-explorer.utils")
 local dadbod = require("dadbod-explorer.dadbod")
 
+---@class DbExplorerAction
+---@field label string
+---@field object_list fun(conn: string): string[] | nil
+---@field format_item fun(obj: string): string | nil
+---@field process_item fun(conn: string, obj: string)
+
+---@class DbExplorerAdapter
+---@field name string
+---@field get_actions fun(adapter: DbExplorerAdapter): table<string, DbExplorerAction>
+
+---@type table<string, DbExplorerAdapter>
 local db_adapters = {}
 local actions_order = {
     "describe",
@@ -17,6 +28,8 @@ local plugin_opts = {
     sample_size = 100,
 }
 
+---@param conn string
+---@return DbExplorerAdapter | nil
 local function get_adapter(conn)
     if not conn then return nil end
     local parsed_url = vim.fn['db#url#parse'](conn)
@@ -38,6 +51,8 @@ local function get_adapter(conn)
     return adapter
 end
 
+---@param conn string
+---@param action_data DbExplorerAction
 local function action_process_item(conn, action_data, selected_object)
     if not conn or not action_data or not selected_object then return nil end
     if selected_object and action_data.process_item then
@@ -70,6 +85,8 @@ local function get_action_object_list(conn, action_data)
     return object_list
 end
 
+---@param conn string
+---@param action_data DbExplorerAction
 local function select_object(conn, action_data)
     if not action_data or not action_data.object_list then return nil end
 
@@ -102,6 +119,8 @@ local function select_object(conn, action_data)
     )
 end
 
+---@param conn string
+---@param action_data DbExplorerAction
 local function perform_action(conn, action_data)
     if not action_data then return end
 
@@ -112,6 +131,8 @@ local function perform_action(conn, action_data)
     end
 end
 
+---@param conn string
+---@param adapter DbExplorerAdapter
 local function select_action(conn, adapter)
     local actions = adapter.get_actions()
     local sorted_action_keys = utils.custom_sort_keys(actions, actions_order)
@@ -146,6 +167,7 @@ local function select_action(conn, adapter)
     )
 end
 
+---@param db_url string
 function M.explore(db_url)
     local conn = dadbod.get_connection(db_url)
     if not conn then return end
@@ -156,9 +178,11 @@ function M.explore(db_url)
     select_action(conn, adapter)
 end
 
+---@param action_name string
+---@return fun(db_url: string)
 function M.action(action_name)
     if action_name == "explore" then
-        return function(url) M.explore(url) end
+        return function(db_url) M.explore(db_url) end
     end
 
     return function(db_url)
@@ -182,6 +206,10 @@ function M.action(action_name)
     end
 end
 
+---@param conn string
+---@param action_name string
+---@param db_object_name string
+---@return number
 function M.get_sample_size(conn, action_name, db_object_name)
   local setting = plugin_opts.sample_size
   if type(setting) == 'number' then
@@ -193,6 +221,11 @@ function M.get_sample_size(conn, action_name, db_object_name)
   end
 end
 
+---@class DbExplorerOpts
+---@field sample_records? integer|fun(conn:string, action_name:string, db_object_name:string):integer
+---@field mappings? table<string, table<string, string>>
+
+---@param opts? DbExplorerOpts
 function M.setup(opts)
     if dadbod.has_dadbod() then
         require("dadbod-explorer.adapter.postgresql")
@@ -221,6 +254,7 @@ function M.setup(opts)
     end
 end
 
+---@param adapter DbExplorerAdapter
 function M.register_adapter(adapter)
     if not adapter.name then
         utils.handle_error("Adapter must have a name."); return

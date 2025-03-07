@@ -2,10 +2,13 @@ local M = {}
 
 local utils = require("dadbod-explorer.utils")
 
+---@return boolean
 function M.has_dadbod()
     return vim.g.loaded_dadbod == 1
 end
 
+---@param url string
+---@return string
 function M.get_connection(url)
     local resolved_url = vim.fn["db#resolve"](url)
     local conn = vim.fn["db#connect"](resolved_url)
@@ -15,6 +18,10 @@ function M.get_connection(url)
     return conn
 end
 
+---@param conn string
+---@param sql string|string[]
+---@param flags? string[]
+---@return string[]
 function M.get_sql_results(conn, sql, flags)
     local db_dispatch_fn = vim.fn['db#adapter#dispatch']
     local command_to_dispatch = db_dispatch_fn(conn, 'interactive')
@@ -30,6 +37,8 @@ function M.get_sql_results(conn, sql, flags)
     return query_result
 end
 
+---@param conn string
+---@param sql string
 function M.run_sql(conn, sql)
     vim.cmd { cmd = 'DB', args = { string.format('%s %s', conn, sql) } }
 end

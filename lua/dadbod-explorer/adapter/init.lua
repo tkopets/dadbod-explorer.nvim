@@ -1,6 +1,8 @@
 local M = {}
 
-
+--- Opens a new preview window and displays the given lines.
+---@param lines string[] The lines of text to display in the preview window.
+---@param filetype string|nil optional filetype
 function M.show_in_preview(lines, filetype)
     local filename = vim.fn.tempname() .. ".dbexp"
     filename = vim.fn.fnameescape(filename)
@@ -26,6 +28,9 @@ function M.show_in_preview(lines, filetype)
     end
 end
 
+--- Asks the user for a filter condition (e.g., a WHERE clause).
+---@param callback fun(filter_condition: string)  A function to be called with the entered filter condition.
+---@param prompt string|nil optional prompt
 function M.ask_for_filter_condition(callback, prompt)
     local input_prompt = prompt
     if not prompt then
@@ -41,6 +46,10 @@ function M.ask_for_filter_condition(callback, prompt)
     )
 end
 
+--- Appends a titled list of objects to a results table.
+---@param results string[] The table to append the results to.
+---@param title string The title for this section of results.
+---@param obj_list string[] The list of objects (strings) to append.
 function M.append_to_results(results, title, obj_list)
     if obj_list and #obj_list > 0 then
         table.insert(results, title)
@@ -57,6 +66,9 @@ function M.append_to_results(results, title, obj_list)
     end
 end
 
+--- Splits a string at the last occurrence of a dot.
+---@param str string The string to split.
+---@return string, string|nil The part of the string before the last dot, and the part after (or nil if no dot).
 function M.split_at_last_dot(str)
     local last_dot_pos = string.match(str, ".*%.()")
     if not last_dot_pos then
@@ -67,6 +79,9 @@ function M.split_at_last_dot(str)
     return before, after
 end
 
+--- Formats a number of bytes into a human-readable string (e.g., "1.23 KB").
+---@param bytes number The number of bytes.
+---@return string The human-readable size string.
 function M.size_pretty(bytes)
     if type(bytes) ~= "number" then
         return "Invalid Input"
@@ -93,6 +108,9 @@ function M.size_pretty(bytes)
     return string.format("%.2f", num):gsub("%.?0+$", "") .. " " .. units[i]
 end
 
+--- Converts a Unix timestamp to an ISO formatted date/time string in UTC.
+---@param unix_timestamp number The Unix timestamp (seconds since epoch).
+---@return string The ISO formatted date/time string (UTC).
 function M.unix_timestamp_to_iso(unix_timestamp)
     if type(unix_timestamp) ~= "number" then
         return "Invalid Input"
@@ -100,6 +118,9 @@ function M.unix_timestamp_to_iso(unix_timestamp)
     return os.date("!%Y-%m-%d %H:%M:%S UTC", unix_timestamp)
 end
 
+--- Formats an integer with thousand separators (commas).
+---@param number number|string The number to format.
+---@return string The formatted number string.
 function M.format_int(number)
     local i, j, minus, int, fraction = tostring(number):find('([-]?)(%d+)([.]?%d*)')
 
