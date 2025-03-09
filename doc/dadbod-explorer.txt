@@ -122,6 +122,7 @@ are Lua modules that define how to interact with a specific database.
 
 Pre-built adapters:
 - PostgreSQL
+- MySQL
 - BigQuery
 
 ==============================================================================

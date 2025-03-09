@@ -14,6 +14,7 @@ It leverages `vim-dadbod` for database connections and query execution, providin
 * **Caching:** Object lists are cached per connection to improve performance.
 * **Extensible:** Supports adding custom actions and adapters for different database systems. Currently has built-in support for:
     * PostgreSQL
+    * MySQL
     * BigQuery
 
 ## Prerequisites

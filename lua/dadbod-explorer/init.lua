@@ -230,6 +230,7 @@ end
 function M.setup(opts)
     if dadbod.has_dadbod() then
         require("dadbod-explorer.adapter.postgresql")
+        require("dadbod-explorer.adapter.mysql")
         require("dadbod-explorer.adapter.bigquery")
     else
         utils.handle_error("vim-dadbod is required but not installed.")
