@@ -41,6 +41,20 @@ local function object_list_functions(conn)
     return result or {}
 end
 
+local function object_list_relations(conn)
+    local items = {}
+    for _, obj in ipairs(object_list_tables(conn)) do
+        table.insert(items, { kind = ObjKind.TABLE, name = obj })
+    end
+
+    for _, obj in ipairs(object_list_views(conn)) do
+        table.insert(items, { kind = ObjKind.VIEW, name = obj })
+    end
+
+    table.sort(items, function(a, b) return a.name < b.name end)
+    return items
+end
+
 local function object_list(conn)
     local items = {}
     for _, obj in ipairs(object_list_tables(conn)) do
@@ -59,14 +73,6 @@ local function object_list(conn)
     return items
 end
 
-local function object_list_relation_cols_full(conn)
-    local result = dadbod_get_sql_results_internal(
-        conn,
-        queries.columns.relation_columns_full
-    )
-    return result or {}
-end
-
 local actions = {
     describe = {
         label = "Describe Table, View or Function",
@@ -83,7 +89,7 @@ local actions = {
     },
     show_sample = {
         label = "Sample Records",
-        object_list = object_list,
+        object_list = object_list_relations,
         format_item = function(obj) return obj.name end,
         process_item = function(conn, obj)
             local sample_size = de.get_sample_size(conn, "show_sample", obj)
@@ -95,7 +101,7 @@ local actions = {
     },
     show_filter = {
         label = "Show Records (with filter)",
-        object_list = object_list,
+        object_list = object_list_relations,
         format_item = function(obj) return obj.name end,
         process_item = function(conn, obj)
             local function run_sql(filter_condition)
@@ -110,9 +116,9 @@ local actions = {
         end,
     },
     yank_columns = {
-        label = "Yank Table Columns",
-        object_list = object_list_tables,
-        format_item = function(obj) return obj end,
+        label = "Yank Columns",
+        object_list = object_list_relations,
+        format_item = function(obj) return obj.name end,
         process_item = function(conn, obj)
             local sql = string.format(
                 [[
@@ -129,7 +135,7 @@ local actions = {
                     and c.oid = :'relation_name'::regclass::oid
                 order by n.nspname, c.relname, a.attnum
                 ]],
-                obj
+                obj.name
             )
             local result = dadbod_get_sql_results_internal(conn, sql)
             local columns = result or {}
@@ -162,30 +168,45 @@ local actions = {
     },
     show_distribution = {
         label = "Values Distribution (with filter)",
-        object_list = object_list_relation_cols_full,
-        format_item = function(obj) return obj end,
+        object_list = object_list_relations,
+        format_item = function(obj) return obj.name end,
         process_item = function(conn, obj)
-            local relation, col = adapter_utils.split_at_last_dot(obj)
-            if not relation or not col then
-                return nil
-            end
+            local relation = obj.name
+            local columns_sql = string.format(
+                queries.columns.relation_columns,
+                relation
+            )
+            local columns = dadbod_get_sql_results_internal(
+                conn,
+                columns_sql
+            )
 
-            local function run_sql(filter_condition)
-                local sql = string.format([[
-                    select %s,
-                           count(*) as count
-                    from   %s
-                    where  %s
-                    group by 1
-                    order by 2 desc]],
-                    col,
-                    relation,
-                    filter_condition
-                )
-                dadbod.run_sql(conn, sql)
-            end
+            if #columns == 0 then return nil end
 
-            adapter_utils.ask_for_filter_condition(run_sql)
+            vim.ui.select(columns, {
+                    prompt = "Select Column",
+                },
+                function(col)
+                    if not col then return end
+
+                    local function run_sql(filter_condition)
+                        local sql = string.format([[
+                            select %s,
+                                   count(*) as count
+                            from   %s
+                            where  %s
+                            group by 1
+                            order by 2 desc]],
+                            col,
+                            relation,
+                            filter_condition
+                        )
+                        dadbod.run_sql(conn, sql)
+                    end
+
+                    adapter_utils.ask_for_filter_condition(run_sql)
+                end
+            )
         end,
     },
 }

@@ -7,7 +7,7 @@ function M.has_dadbod()
     return vim.g.loaded_dadbod == 1
 end
 
----@param url string
+---@param url string | nil
 ---@return string
 function M.get_connection(url)
     local resolved_url = vim.fn["db#resolve"](url)

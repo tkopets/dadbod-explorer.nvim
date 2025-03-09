@@ -57,6 +57,8 @@ M.objects = {
 local sql_relation_columns = [[
     select  pg_catalog.quote_ident(n.nspname) as schema_name,
             pg_catalog.quote_ident(c.relname) as relation_name,
+            pg_catalog.quote_ident(n.nspname) || '.' ||
+            pg_catalog.quote_ident(c.relname) as relation_full_name,
             pg_catalog.quote_ident(a.attname) as column_name,
             pg_catalog.quote_ident(n.nspname) || '.' ||
             pg_catalog.quote_ident(c.relname) || '.' ||
@@ -138,18 +140,14 @@ M.columns = {
 ]],
 
     relation_columns = string.format([[
-    select column_name
-    from (%s) as x
-    order by x.schema_name, x.relation_name, x.column_name, x.attnum]],
+        select column_name
+        from (%s) as x
+        ]],
         sql_relation_columns
-    ),
-
-    relation_columns_full = string.format([[
-    select column_full_name
-    from (%s) as x
-    order by x.schema_name, x.relation_name, x.column_name, x.attnum]],
-        sql_relation_columns
-    )
+    ) .. [[
+        where relation_full_name = '%s'
+        order by x.schema_name, x.relation_name, x.column_name, x.attnum
+    ]],
 }
 
 

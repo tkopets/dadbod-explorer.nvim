@@ -5,13 +5,13 @@ local dadbod = require("dadbod-explorer.dadbod")
 
 ---@class DbExplorerAction
 ---@field label string
----@field object_list fun(conn: string): string[] | nil
----@field format_item fun(obj: string): string | nil
----@field process_item fun(conn: string, obj: string)
+---@field object_list fun(conn: string): any[]
+---@field format_item fun(obj: any): string
+---@field process_item fun(conn: string, obj: any)
 
 ---@class DbExplorerAdapter
 ---@field name string
----@field get_actions fun(adapter: DbExplorerAdapter): table<string, DbExplorerAction>
+---@field get_actions fun(): table<string, DbExplorerAction>
 
 ---@type table<string, DbExplorerAdapter>
 local db_adapters = {}
@@ -162,12 +162,13 @@ local function select_action(conn, adapter)
         function(choice)
             local sel_action_name = choice and choice.value
             local action_data = sel_action_name and actions[sel_action_name]
+            if not action_data then return end
             perform_action(conn, action_data)
         end
     )
 end
 
----@param db_url string
+---@param db_url string | nil
 function M.explore(db_url)
     local conn = dadbod.get_connection(db_url)
     if not conn then return end
