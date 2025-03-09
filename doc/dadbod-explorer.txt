@@ -13,7 +13,7 @@ CONTENTS                                            *dadbod-explorer-contents*
 ==============================================================================
 INTRO                                                  *dadbod-explorer-intro*
 
-Dadbod Explorer is a Neovim plugin that provides a simple UI for interacting
+dadbod-explorer.nvim provides a set of common actions to interact
 with databases. It uses |dadbod.txt| (https://github.com/tpope/vim-dadbod) for
 the underlying database connection and query execution.
 

@@ -1,7 +1,7 @@
 # Dadbod Explorer
 
 A Neovim plugin for exploring databases, inspired by [vim-dadbod](https://github.com/tpope/vim-dadbod).
-It leverages `vim-dadbod` for database connections and query execution, providing a UI for common database exploration tasks.
+It leverages `vim-dadbod` for database connections and query execution, offering a set of common actions to interact with your database.
 
 ## Features
 
