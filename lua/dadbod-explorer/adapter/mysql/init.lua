@@ -33,7 +33,6 @@ local function dadbod_get_sql_results_internal(conn, sql)
 
     local db_systemlist_fn = vim.fn['db#systemlist']
     local result = db_systemlist_fn(command_to_dispatch, sql_to_run)
-    vim.print('before', result)
 
     -- some basic post-processing
     if result and #result >= 1 then
@@ -41,7 +40,6 @@ local function dadbod_get_sql_results_internal(conn, sql)
             result = { unpack(result, 2) }
         end
     end
-    vim.print('after', result)
 
     return result
 end
@@ -99,20 +97,12 @@ local function object_list(conn)
     return items
 end
 
-local function object_list_relation_cols(conn)
-    local result = dadbod_get_sql_results_internal(
-        conn,
-        queries.columns.relation_columns
-    )
-    return result or {}
-end
-
 local actions = {
     describe = {
         label = "Describe Table, View or Function",
         object_list = object_list,
-        format_item = function(obj) return obj.name end,
-        process_item = function(conn, obj)
+        format_item = function(conn, obj, plugin_opts) return obj.name end,
+        process_item = function(conn, obj, plugin_opts)
             if obj.kind == ObjKind.TABLE or obj.kind == ObjKind.VIEW then
                 dadbod.run_sql(conn, string.format([[desc %s]], obj.name))
             end
@@ -140,8 +130,8 @@ local actions = {
     show_sample = {
         label = "Sample Records",
         object_list = object_list_relations,
-        format_item = function(obj) return obj.name end,
-        process_item = function(conn, obj)
+        format_item = function(conn, obj, plugin_opts) return obj.name end,
+        process_item = function(conn, obj, plugin_opts)
             local sample_size = de.get_sample_size(conn, "show_sample", obj)
             dadbod.run_sql(
                 conn,
@@ -152,8 +142,8 @@ local actions = {
     show_filter = {
         label = "Show Records (with filter)",
         object_list = object_list_relations,
-        format_item = function(obj) return obj.name end,
-        process_item = function(conn, obj)
+        format_item = function(conn, obj, plugin_opts) return obj.name end,
+        process_item = function(conn, obj, plugin_opts)
             local function run_sql(filter_condition)
                 local sql = string.format(
                     "select * from %s where %s",
@@ -168,15 +158,14 @@ local actions = {
     yank_columns = {
         label = "Yank Columns",
         object_list = object_list_relations,
-        format_item = function(obj) return obj.name end,
-        process_item = function(conn, obj)
+        format_item = function(conn, obj, plugin_opts) return obj.name end,
+        process_item = function(conn, obj, plugin_opts)
             local relation = obj.name
             local columns_sql = string.format(
                 queries.columns.relation_columns,
                 relation
             )
             local result = dadbod_get_sql_results_internal(conn, columns_sql)
-            vim.print(result)
             local columns = result or {}
             if columns then
                 local column_string = table.concat(columns, "\n")
@@ -190,7 +179,7 @@ local actions = {
     },
     list_objects = {
         label = "List Objects",
-        process_item = function(conn)
+        process_item = function(conn, obj, plugin_opts)
             local tables = object_list_tables(conn)
             local views = object_list_views(conn)
             local funcs = object_list_functions(conn)
@@ -208,8 +197,8 @@ local actions = {
     show_distribution = {
         label = "Values Distribution (with filter)",
         object_list = object_list_relations,
-        format_item = function(obj) return obj.name end,
-        process_item = function(conn, obj)
+        format_item = function(conn, obj, plugin_opts) return obj.name end,
+        process_item = function(conn, obj, plugin_opts)
             local relation = obj.name
             local columns_sql = string.format(
                 queries.columns.relation_columns,

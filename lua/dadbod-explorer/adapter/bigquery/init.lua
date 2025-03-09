@@ -1,4 +1,5 @@
 local dadbod = require("dadbod-explorer.dadbod")
+local utils = require("dadbod-explorer.utils")
 local adapter_utils = require("dadbod-explorer.adapter")
 local queries = require("dadbod-explorer.adapter.bigquery.queries")
 local format = require("dadbod-explorer.adapter.bigquery.format")
@@ -11,16 +12,16 @@ local ObjKind = {
     FUNC = "function"
 }
 
-local function dadbod_bq_change_format(conn_url, format)
+local function dadbod_bq_change_format(conn_url, output_format)
     local parsed_conn = vim.fn["db#url#parse"](conn_url)
     if parsed_conn and parsed_conn.params then
-        parsed_conn.params.format = format
+        parsed_conn.params.format = output_format
     end
     return vim.fn["db#url#format"](parsed_conn)
 end
 
-local function dadbod_bq_sql_results(conn, sql, format)
-    local conn_str = dadbod_bq_change_format(conn, format)
+local function dadbod_bq_sql_results(conn, sql, output_format)
+    local conn_str = dadbod_bq_change_format(conn, output_format)
     local db_dispatch_fn = vim.fn['db#adapter#dispatch']
     local command_to_dispatch = db_dispatch_fn(conn_str, 'filter')
     local sql_to_run = sql
@@ -33,8 +34,8 @@ local function dadbod_bq_sql_results(conn, sql, format)
     return result
 end
 
-local function dadbod_bq_cmd_results(conn, command, format)
-    local conn_str = dadbod_bq_change_format(conn, format)
+local function dadbod_bq_cmd_results(conn, command, output_format)
+    local conn_str = dadbod_bq_change_format(conn, output_format)
     local db_dispatch_fn = vim.fn['db#adapter#dispatch']
     local command_to_dispatch = db_dispatch_fn(conn_str, 'filter')
     table.remove(command_to_dispatch, #command_to_dispatch)
@@ -59,23 +60,72 @@ local function dadbod_bq_sql_results_csv_no_header(conn, sql)
     return result
 end
 
-local function object_list_tables(conn)
-    return dadbod_bq_sql_results_csv_no_header(conn, queries.objects.tables)
-end
+local function get_regions(conn, action_name, plugin_opts)
+    local default = { 'region-eu', 'region-us' }
+    local regions = utils.get_option(
+        conn,
+        action_name,
+        plugin_opts,
+        { 'adapter', 'bigquery', 'regions' },
+        {'string', 'table'},
+        default
+    )
 
-local function object_list_views(conn)
-    return dadbod_bq_sql_results_csv_no_header(conn, queries.objects.views)
-end
-
-local function object_list_relations(conn)
-    local items = {}
-
-    for _, obj in ipairs(object_list_tables(conn)) do
-        table.insert(items, { kind = ObjKind.TABLE, name = obj })
+    if not regions then
+        return default
     end
 
-    for _, obj in ipairs(object_list_views(conn)) do
-        table.insert(items, { kind = ObjKind.VIEW, name = obj })
+    if type(regions) == 'string' then
+        return { regions }
+    end
+
+    return regions
+end
+
+local function object_list_tables(conn, regions)
+    local sql = queries.objects.tables
+    local items = {}
+
+    for _, region in ipairs(regions) do
+        local region_sql = string.gsub(sql, '`region%-us`', region)
+
+        local objects = dadbod_bq_sql_results_csv_no_header(conn, region_sql)
+        for _, obj in ipairs(objects) do
+            table.insert(items, { kind = ObjKind.TABLE, name = obj })
+        end
+    end
+
+    table.sort(items, function(a, b) return a.name < b.name end)
+    return items
+end
+
+local function object_list_views(conn, regions)
+    -- return dadbod_bq_sql_results_csv_no_header(conn, queries.objects.views)
+    local sql = queries.objects.views
+    local items = {}
+
+    for _, region in ipairs(regions) do
+        local region_sql = string.gsub(sql, '`region-us`', region)
+
+        local objects = dadbod_bq_sql_results_csv_no_header(conn, region_sql)
+        for _, obj in ipairs(objects) do
+            table.insert(items, { kind = ObjKind.VIEW, name = obj })
+        end
+    end
+
+    table.sort(items, function(a, b) return a.name < b.name end)
+    return items
+end
+
+local function object_list_relations(conn, regions)
+    local items = {}
+
+    for _, item in ipairs(object_list_tables(conn, regions)) do
+        table.insert(items, item)
+    end
+
+    for _, item in ipairs(object_list_views(conn, regions)) do
+        table.insert(items, item)
     end
 
     table.sort(items, function(a, b) return a.name < b.name end)
@@ -86,10 +136,12 @@ end
 local actions = {
     describe = {
         label = "Describe Table or View",
-        object_list = object_list_relations,
-        format_item = function(obj) return format_bq_object(obj.name) end,
-        process_item = function(conn, obj)
-            -- local cmd = { 'show', '--schema', format_bq_object(obj.name) }
+        object_list = function(conn, plugin_opts)
+            local regions = get_regions(conn, 'describe', plugin_opts)
+            return object_list_relations(conn, regions)
+        end,
+        format_item = function(conn, obj, plugin_opts) return format_bq_object(obj.name) end,
+        process_item = function(conn, obj, plugin_opts)
             local cmd = { 'show', format_bq_object(obj.name) }
             local result = dadbod_bq_cmd_results(conn, cmd, 'prettyjson') or {}
             if not result then return end
@@ -107,19 +159,25 @@ local actions = {
     },
     show_sample = {
         label = "Sample Records",
-        object_list = object_list_tables,
-        format_item = format_bq_object,
-        process_item = function(conn, obj)
-            local cmd = { 'head', format_bq_object(obj) }
+        object_list = function(conn, plugin_opts)
+            local regions = get_regions(conn, 'show_sample', plugin_opts)
+            return object_list_tables(conn, regions)
+        end,
+        format_item = function(conn, obj, plugin_opts) return format_bq_object(obj.name) end,
+        process_item = function(conn, obj, plugin_opts)
+            local cmd = { 'head', format_bq_object(obj.name) }
             local result = dadbod_bq_cmd_results(conn, cmd) or {}
             adapter_utils.show_in_preview(result)
         end,
     },
     show_filter = {
         label = "Show Records (with filter)",
-        object_list = object_list_relations,
-        format_item = function(obj) return format_bq_object(obj.name) end,
-        process_item = function(conn, obj)
+        object_list = function(conn, plugin_opts)
+            local regions = get_regions(conn, 'show_filter', plugin_opts)
+            return object_list_relations(conn, regions)
+        end,
+        format_item = function(conn, obj, plugin_opts) return format_bq_object(obj.name) end,
+        process_item = function(conn, obj, plugin_opts)
             local function run_sql(filter_condition)
                 local sql = string.format(
                     "select * from `%s` where %s",
@@ -133,9 +191,12 @@ local actions = {
     },
     yank_columns = {
         label = "Yank Columns",
-        object_list = object_list_relations,
-        format_item = function(obj) return format_bq_object(obj.name) end,
-        process_item = function(conn, obj)
+        object_list = function(conn, plugin_opts)
+            local regions = get_regions(conn, 'yank_columns', plugin_opts)
+            return object_list_relations(conn, regions)
+        end,
+        format_item = function(conn, obj, plugin_opts) return format_bq_object(obj.name) end,
+        process_item = function(conn, obj, plugin_opts)
             local sql = string.format(
                 queries.columns.relation_columns,
                 obj.name
@@ -154,9 +215,11 @@ local actions = {
     },
     list_objects = {
         label = "List Objects",
-        process_item = function(conn)
-            local tables = object_list_tables(conn)
-            local views = object_list_views(conn)
+        process_item = function(conn, obj, plugin_opts)
+            local regions = get_regions(conn, 'list_objects', plugin_opts)
+
+            local tables = object_list_tables(conn, regions)
+            local views = object_list_views(conn, regions)
 
             local results = {}
             adapter_utils.append_to_results(results, "Table", tables)
@@ -169,9 +232,12 @@ local actions = {
     },
     show_distribution = {
         label = "Values Distribution (with filter)",
-        object_list = object_list_relations,
-        format_item = function(obj) return format_bq_object(obj.name) end,
-        process_item = function(conn, obj)
+        object_list = function(conn, plugin_opts)
+            local regions = get_regions(conn, 'show_distribution', plugin_opts)
+            return object_list_relations(conn, regions)
+        end,
+        format_item = function(conn, obj, plugin_opts) return format_bq_object(obj.name) end,
+        process_item = function(conn, obj, plugin_opts)
             local relation = obj.name
             local columns_sql = string.format(
                 queries.columns.relation_columns,

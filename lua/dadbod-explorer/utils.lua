@@ -5,6 +5,47 @@ function M.handle_error(err)
     vim.api.nvim_err_writeln("dadbod-explorer error: " .. err)
 end
 
+---@param conn string
+---@param action_name string
+---@param opts table
+---@param opts_path string[]
+---@param types string | string[]
+---@param default any
+function M.get_option(conn, action_name, opts, opts_path, types, default)
+    local function get_val(data, path)
+        local current = data
+        for _, key in ipairs(path) do
+            if type(current) ~= "table" or current[key] == nil then
+                return nil
+            end
+            current = current[key]
+        end
+        return current
+    end
+
+    local setting = get_val(opts, opts_path)
+
+    if type(setting) == 'function' then
+        return setting(conn, action_name)
+    end
+
+    if type(types) == 'string' then
+        if type(setting) == types then
+            return setting
+        end
+    end
+
+    if type(types) == 'table' then
+        for _, typ in ipairs(types) do
+            if type(setting) == typ then
+                return setting
+            end
+        end
+    end
+
+    return default
+end
+
 ---@param str string
 ---@return integer
 function M.simple_hash(str)

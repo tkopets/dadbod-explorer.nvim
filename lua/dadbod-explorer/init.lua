@@ -3,11 +3,25 @@ local M = {}
 local utils = require("dadbod-explorer.utils")
 local dadbod = require("dadbod-explorer.dadbod")
 
+---@alias option_fn fun(conn:string, action_name:string):any
+---@class DbExplorerOpts
+---@field sample_size? integer|fun(conn:string, action_name:string):integer
+---@field adapter? table<string, table<string, any|option_fn>>
+---@field mappings? table<string, table<string, string>>
+local plugin_opts = {
+    sample_size = 100,
+    adapter = {
+        bigquery = {
+            regions = {'region-eu', 'region-us'}
+        }
+    }
+}
+
 ---@class DbExplorerAction
 ---@field label string
----@field object_list fun(conn: string): any[]
----@field format_item fun(obj: any): string
----@field process_item fun(conn: string, obj: any)
+---@field object_list fun(conn: string, plugin_opts: DbExplorerOpts): any[]
+---@field format_item fun(conn: string, obj: any, plugin_opts: DbExplorerOpts): string
+---@field process_item fun(conn: string, obj: any, plugin_opts: DbExplorerOpts)
 
 ---@class DbExplorerAdapter
 ---@field name string
@@ -24,9 +38,6 @@ local actions_order = {
     "list_objects"
 }
 local cache = {}
-local plugin_opts = {
-    sample_size = 100,
-}
 
 ---@param conn string
 ---@return DbExplorerAdapter | nil
@@ -56,7 +67,7 @@ end
 local function action_process_item(conn, action_data, selected_object)
     if not conn or not action_data or not selected_object then return nil end
     if selected_object and action_data.process_item then
-        action_data.process_item(conn, selected_object)
+        action_data.process_item(conn, selected_object, plugin_opts)
     end
 end
 
@@ -75,7 +86,7 @@ local function get_action_object_list(conn, action_data)
         end
     end
 
-    local object_list = action_data.object_list(conn)
+    local object_list = action_data.object_list(conn, plugin_opts)
 
     -- save to cache
     if cache[conn_hashed] == nil then cache[conn_hashed] = {} end
@@ -97,7 +108,7 @@ local function select_object(conn, action_data)
     for _, obj in ipairs(object_list) do
         local label = obj
         if action_data.format_item then
-            label = action_data.format_item(obj)
+            label = action_data.format_item(conn, obj, plugin_opts)
         end
         table.insert(items, {
             value = obj,
@@ -127,7 +138,7 @@ local function perform_action(conn, action_data)
     if action_data.object_list then
         select_object(conn, action_data)
     elseif action_data.process_item then
-        action_data.process_item(conn)
+        action_data.process_item(conn, nil, plugin_opts)
     end
 end
 
@@ -209,22 +220,18 @@ end
 
 ---@param conn string
 ---@param action_name string
----@param db_object_name string
 ---@return number
-function M.get_sample_size(conn, action_name, db_object_name)
-  local setting = plugin_opts.sample_size
-  if type(setting) == 'number' then
-    return setting
-  elseif type(setting) == 'function' then
-    return setting(conn, action_name, db_object_name)
-  else
-    return 100
-  end
+function M.get_sample_size(conn, action_name)
+    local val = utils.get_option(
+        conn,
+        action_name,
+        plugin_opts,
+        { 'sample_size' },
+        'number',
+        100
+    )
+    return val
 end
-
----@class DbExplorerOpts
----@field sample_records? integer|fun(conn:string, action_name:string, db_object_name:string):integer
----@field mappings? table<string, table<string, string>>
 
 ---@param opts? DbExplorerOpts
 function M.setup(opts)
@@ -237,9 +244,9 @@ function M.setup(opts)
     end
 
     if opts then
-      for k, v in pairs(opts) do
-        plugin_opts[k] = v
-      end
+        for k, v in pairs(opts) do
+            plugin_opts[k] = v
+        end
     end
 
     if opts and opts.mappings then

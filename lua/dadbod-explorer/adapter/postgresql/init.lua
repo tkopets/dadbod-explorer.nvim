@@ -77,8 +77,8 @@ local actions = {
     describe = {
         label = "Describe Table, View or Function",
         object_list = object_list,
-        format_item = function(obj) return obj.name end,
-        process_item = function(conn, obj)
+        format_item = function(conn, obj, plugin_opts) return obj.name end,
+        process_item = function(conn, obj, plugin_opts)
             if obj.kind == ObjKind.TABLE or obj.kind == ObjKind.VIEW then
                 dadbod.run_sql(conn, string.format([[\d %s]], obj.name))
             end
@@ -90,8 +90,8 @@ local actions = {
     show_sample = {
         label = "Sample Records",
         object_list = object_list_relations,
-        format_item = function(obj) return obj.name end,
-        process_item = function(conn, obj)
+        format_item = function(conn, obj, plugin_opts) return obj.name end,
+        process_item = function(conn, obj, plugin_opts)
             local sample_size = de.get_sample_size(conn, "show_sample", obj)
             dadbod.run_sql(
                 conn,
@@ -102,8 +102,8 @@ local actions = {
     show_filter = {
         label = "Show Records (with filter)",
         object_list = object_list_relations,
-        format_item = function(obj) return obj.name end,
-        process_item = function(conn, obj)
+        format_item = function(conn, obj, plugin_opts) return obj.name end,
+        process_item = function(conn, obj, plugin_opts)
             local function run_sql(filter_condition)
                 local sql = string.format(
                     "select * from %s where %s",
@@ -118,8 +118,8 @@ local actions = {
     yank_columns = {
         label = "Yank Columns",
         object_list = object_list_relations,
-        format_item = function(obj) return obj.name end,
-        process_item = function(conn, obj)
+        format_item = function(conn, obj, plugin_opts) return obj.name end,
+        process_item = function(conn, obj, plugin_opts)
             local sql = string.format(
                 [[
                 \set relation_name %s
@@ -151,7 +151,7 @@ local actions = {
     },
     list_objects = {
         label = "List Objects",
-        process_item = function(conn)
+        process_item = function(conn, obj, plugin_opts)
             local tables = object_list_tables(conn)
             local views = object_list_views(conn)
             local funcs = object_list_functions(conn)
@@ -169,8 +169,8 @@ local actions = {
     show_distribution = {
         label = "Values Distribution (with filter)",
         object_list = object_list_relations,
-        format_item = function(obj) return obj.name end,
-        process_item = function(conn, obj)
+        format_item = function(conn, obj, plugin_opts) return obj.name end,
+        process_item = function(conn, obj, plugin_opts)
             local relation = obj.name
             local columns_sql = string.format(
                 queries.columns.relation_columns,
