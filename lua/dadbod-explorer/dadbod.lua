@@ -18,6 +18,12 @@ function M.get_connection(url)
     return conn
 end
 
+---@param conn_or_url string dadbod connection string or URL
+---@return string scheme Databod scheme / adapter type (e.g. postgresql, mysql, bigquery)
+function M.connection_scheme(conn_or_url)
+    return vim.fn['db#url#parse'](conn_or_url).scheme
+end
+
 ---@param conn string
 ---@param sql string|string[]
 ---@param flags? string[]

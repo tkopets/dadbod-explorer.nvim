@@ -10,9 +10,16 @@ local dadbod = require("dadbod-explorer.dadbod")
 ---@field mappings? table<string, table<string, string>>
 local plugin_opts = {
     sample_size = 100,
+    cache_object_list = function(conn)
+        if dadbod.connection_scheme(conn) == 'bigquery' then
+            return 60 * 60 * 2 -- 2 hours
+        end
+        return 0
+    end,
+    cache_results = false,
     adapter = {
         bigquery = {
-            regions = {'region-eu', 'region-us'}
+            regions = { 'region-eu', 'region-us' }
         }
     }
 }
@@ -65,32 +72,66 @@ end
 ---@param conn string
 ---@param action_data DbExplorerAction
 local function action_process_item(conn, action_data, selected_object)
-    if not conn or not action_data or not selected_object then return nil end
-    if selected_object and action_data.process_item then
+    if not conn or not action_data then return nil end
+    if action_data.process_item then
         action_data.process_item(conn, selected_object, plugin_opts)
     end
 end
 
-local function get_action_object_list(conn, action_data)
+
+---@param conn string
+---@param action_name string
+---@return number
+local function get_object_list_cache_age(conn, action_name)
+    local val = utils.get_option(
+        conn,
+        action_name,
+        plugin_opts,
+        { 'cache_object_list' },
+        { 'number', 'boolean' },
+        nil
+    )
+    if not val then return 0 end
+    return val
+end
+
+
+---@param conn string
+---@param action_data DbExplorerAction
+---@param action_name string
+local function get_action_object_list(conn, action_data, action_name)
     if not action_data or not action_data.object_list or not conn then
         return nil
     end
 
-    local conn_hashed = utils.simple_hash(conn)
+    local conn_hashed
+    local cache_section = 'object_list'
+    local cache_age = get_object_list_cache_age(conn, action_name)
+    if cache_age > 0 then
+        conn_hashed = utils.simple_hash(conn)
 
-    -- return cached, if found
-    if cache[conn_hashed] ~= nil then
-        local cached_object_list = cache[conn_hashed][action_data.object_list]
-        if cached_object_list ~= nil then
-            return cached_object_list
+        -- return cached, if found
+        if cache[conn_hashed] ~= nil and cache[conn_hashed][cache_section] ~= nil then
+            local cache_entry = cache[conn_hashed][cache_section][action_data.object_list]
+            if cache_entry ~= nil and cache_entry.expiration >= os.time() then
+                return cache_entry.data
+            else
+                cache[conn_hashed][cache_section][action_data.object_list] = nil
+            end
         end
     end
 
     local object_list = action_data.object_list(conn, plugin_opts)
 
-    -- save to cache
-    if cache[conn_hashed] == nil then cache[conn_hashed] = {} end
-    cache[conn_hashed][action_data.object_list] = object_list
+    if cache_age > 0 then
+        -- save to cache
+        if cache[conn_hashed] == nil then cache[conn_hashed] = {} end
+        if cache[conn_hashed][cache_section] == nil then cache[conn_hashed][cache_section] = {} end
+        cache[conn_hashed][cache_section][action_data.object_list] = {
+            expiration = os.time() + cache_age,
+            data = object_list
+        }
+    end
 
     if not object_list then return nil end
     return object_list
@@ -98,10 +139,11 @@ end
 
 ---@param conn string
 ---@param action_data DbExplorerAction
-local function select_object(conn, action_data)
+---@param action_name string
+local function select_object(conn, action_data, action_name)
     if not action_data or not action_data.object_list then return nil end
 
-    local object_list = get_action_object_list(conn, action_data)
+    local object_list = get_action_object_list(conn, action_data, action_name)
     if not object_list then return nil end
 
     local items = {}
@@ -125,6 +167,7 @@ local function select_object(conn, action_data)
         },
         function(choice)
             local selected_object = choice and choice.value
+            if not selected_object then return end
             action_process_item(conn, action_data, selected_object)
         end
     )
@@ -132,13 +175,14 @@ end
 
 ---@param conn string
 ---@param action_data DbExplorerAction
-local function perform_action(conn, action_data)
+---@param action_name string
+local function perform_action(conn, action_data, action_name)
     if not action_data then return end
 
     if action_data.object_list then
-        select_object(conn, action_data)
+        select_object(conn, action_data, action_name)
     elseif action_data.process_item then
-        action_data.process_item(conn, nil, plugin_opts)
+        action_process_item(conn, action_data, nil)
     end
 end
 
@@ -171,10 +215,10 @@ local function select_action(conn, adapter)
             format_item = function(item) return item.label end
         },
         function(choice)
-            local sel_action_name = choice and choice.value
-            local action_data = sel_action_name and actions[sel_action_name]
+            local action_name = choice and choice.value
+            local action_data = action_name and actions[action_name]
             if not action_data then return end
-            perform_action(conn, action_data)
+            perform_action(conn, action_data, action_name)
         end
     )
 end
@@ -214,7 +258,7 @@ function M.action(action_name)
             return
         end
 
-        perform_action(conn, action_data)
+        perform_action(conn, action_data, action_name)
     end
 end
 
@@ -261,6 +305,10 @@ function M.setup(opts)
             end
         end
     end
+end
+
+function M.clear_cache()
+    cache = {}
 end
 
 ---@param adapter DbExplorerAdapter
