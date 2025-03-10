@@ -67,7 +67,7 @@ local function get_regions(conn, action_name, plugin_opts)
         action_name,
         plugin_opts,
         { 'adapter', 'bigquery', 'regions' },
-        {'string', 'table'},
+        { 'string', 'table' },
         default
     )
 
@@ -105,7 +105,7 @@ local function object_list_views(conn, regions)
     local items = {}
 
     for _, region in ipairs(regions) do
-        local region_sql = string.gsub(sql, '`region-us`', region)
+        local region_sql = string.gsub(sql, '`region%-us`', region)
 
         local objects = dadbod_bq_sql_results_csv_no_header(conn, region_sql)
         for _, obj in ipairs(objects) do
@@ -221,9 +221,19 @@ local actions = {
             local tables = object_list_tables(conn, regions)
             local views = object_list_views(conn, regions)
 
+            local table_list = {}
+            for _, table_obj in ipairs(tables) do
+                table.insert(table_list, table_obj.name)
+            end
+
+            local view_list = {}
+            for _, view_obj in ipairs(views) do
+                table.insert(view_list, view_obj.name)
+            end
+
             local results = {}
-            adapter_utils.append_to_results(results, "Table", tables)
-            adapter_utils.append_to_results(results, "View", views)
+            adapter_utils.append_to_results(results, "Table", table_list)
+            adapter_utils.append_to_results(results, "View", view_list)
 
             if results and #results > 0 then
                 adapter_utils.show_in_preview(results)
