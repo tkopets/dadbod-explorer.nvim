@@ -15,6 +15,7 @@ It leverages `vim-dadbod` for database connections and query execution, offering
 * **Extensible:** Supports adding custom actions and adapters for different database systems. Currently has built-in support for:
     * PostgreSQL
     * MySQL
+    * SQLite
     * BigQuery
 
 ## Prerequisites

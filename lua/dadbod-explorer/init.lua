@@ -16,7 +16,6 @@ local plugin_opts = {
         end
         return 0
     end,
-    cache_results = false,
     adapter = {
         bigquery = {
             regions = { 'region-eu', 'region-us' }
@@ -282,6 +281,7 @@ function M.setup(opts)
     if dadbod.has_dadbod() then
         require("dadbod-explorer.adapter.postgresql")
         require("dadbod-explorer.adapter.mysql")
+        require("dadbod-explorer.adapter.sqlite")
         require("dadbod-explorer.adapter.bigquery")
     else
         utils.handle_error("vim-dadbod is required but not installed.")
