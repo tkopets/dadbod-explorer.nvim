@@ -25,13 +25,13 @@ local plugin_opts = {
 }
 
 ---@class DbExplorerAction
----@field label string
----@field object_list fun(conn: string, plugin_opts: DbExplorerOpts): any[]
----@field format_item fun(conn: string, obj: any, plugin_opts: DbExplorerOpts): string
----@field process_item fun(conn: string, obj: any, plugin_opts: DbExplorerOpts)
+---@field label string Action label
+---@field object_list fun(conn: string, plugin_opts: DbExplorerOpts): any[] List of objects for selection
+---@field format_item fun(conn: string, obj: any, plugin_opts: DbExplorerOpts): string Format single item for display
+---@field process_item fun(conn: string, obj: any, plugin_opts: DbExplorerOpts) Perform action on selected item
 
 ---@class DbExplorerAdapter
----@field name string
+---@field name string Adapter name which corresponds to dadbod adapter scheme
 ---@field get_actions fun(): table<string, DbExplorerAction>
 
 ---@type table<string, DbExplorerAdapter>
