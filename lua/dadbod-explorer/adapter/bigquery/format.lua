@@ -31,9 +31,11 @@ function M.bq_show_output(show_output)
         table.insert(out, '```sql')
         table.insert(out, string.format(
             "create or replace view `%s` as",
-            relation_name .. ';'
+            relation_name
         ))
-        table.insert(out, parsed.view.query)
+        for line in string.gmatch(parsed.view.query, "[^\n]+") do
+            table.insert(out, line)
+        end
         table.insert(out, '```')
     end
 
