@@ -87,7 +87,7 @@ local actions = {
         object_list = object_list_relations,
         format_item = function(conn, obj, plugin_opts) return obj.name end,
         process_item = function(conn, obj, plugin_opts)
-            local sample_size = de.get_sample_size(conn, "show_sample", obj)
+            local sample_size = de.get_sample_size(conn, obj)
             dadbod.run_sql(
                 conn,
                 string.format([[select * from %s limit %s]], obj.name, sample_size)

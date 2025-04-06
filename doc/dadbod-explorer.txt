@@ -154,7 +154,7 @@ Example action definition: >lua
     }
 <
 To get `sample_size` for `show_sample` action you can use: >lua
-    require('dadbod-explorer').get_sample_size(conn, action_name, obj)
+    require('dadbod-explorer').get_sample_size(conn, obj)
 <
 Register your adapter using: >lua
     require("dadbod-explorer").register_adapter(your_adapter_module)

@@ -3,9 +3,9 @@ local M = {}
 local utils = require("dadbod-explorer.utils")
 local dadbod = require("dadbod-explorer.dadbod")
 
----@alias option_fn fun(conn:string, action_name:string):any
+---@alias option_fn fun(conn:string):any
 ---@class DbExplorerOpts
----@field sample_size? integer|fun(conn:string, action_name:string):integer
+---@field sample_size? integer|fun(conn:string):integer
 ---@field adapter? table<string, table<string, any|option_fn>>
 ---@field mappings? table<string, table<string, string>>
 local plugin_opts = {
@@ -79,33 +79,32 @@ end
 
 
 ---@param conn string
----@param action_name string
 ---@return number
-local function get_object_list_cache_age(conn, action_name)
+local function get_object_list_cache_age(conn)
     local val = utils.get_option(
         conn,
-        action_name,
         plugin_opts,
         { 'cache_object_list' },
         { 'number', 'boolean' },
         nil
     )
-    if not val then return 0 end
+    if type(val) == "boolean" then
+        if val then return 86400 else return 0 end  -- 1 day if cache is enabled
+    end
     return val
 end
 
 
 ---@param conn string
 ---@param action_data DbExplorerAction
----@param action_name string
-local function get_action_object_list(conn, action_data, action_name)
+local function get_action_object_list(conn, action_data)
     if not action_data or not action_data.object_list or not conn then
         return nil
     end
 
     local conn_hashed
     local cache_section = 'object_list'
-    local cache_age = get_object_list_cache_age(conn, action_name)
+    local cache_age = get_object_list_cache_age(conn)
     if cache_age > 0 then
         conn_hashed = utils.simple_hash(conn)
 
@@ -138,11 +137,10 @@ end
 
 ---@param conn string
 ---@param action_data DbExplorerAction
----@param action_name string
-local function select_object(conn, action_data, action_name)
+local function select_object(conn, action_data)
     if not action_data or not action_data.object_list then return nil end
 
-    local object_list = get_action_object_list(conn, action_data, action_name)
+    local object_list = get_action_object_list(conn, action_data)
     if not object_list then return nil end
 
     local items = {}
@@ -174,12 +172,11 @@ end
 
 ---@param conn string
 ---@param action_data DbExplorerAction
----@param action_name string
-local function perform_action(conn, action_data, action_name)
+local function perform_action(conn, action_data)
     if not action_data then return end
 
     if action_data.object_list then
-        select_object(conn, action_data, action_name)
+        select_object(conn, action_data)
     elseif action_data.process_item then
         action_process_item(conn, action_data, nil)
     end
@@ -217,7 +214,7 @@ local function select_action(conn, adapter)
             local action_name = choice and choice.value
             local action_data = action_name and actions[action_name]
             if not action_data then return end
-            perform_action(conn, action_data, action_name)
+            perform_action(conn, action_data)
         end
     )
 end
@@ -257,17 +254,15 @@ function M.action(action_name)
             return
         end
 
-        perform_action(conn, action_data, action_name)
+        perform_action(conn, action_data)
     end
 end
 
 ---@param conn string
----@param action_name string
 ---@return number
-function M.get_sample_size(conn, action_name)
+function M.get_sample_size(conn)
     local val = utils.get_option(
         conn,
-        action_name,
         plugin_opts,
         { 'sample_size' },
         'number',

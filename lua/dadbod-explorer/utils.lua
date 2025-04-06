@@ -6,12 +6,11 @@ function M.handle_error(err)
 end
 
 ---@param conn string
----@param action_name string
 ---@param opts table
 ---@param opts_path string[]
 ---@param types string | string[]
 ---@param default any
-function M.get_option(conn, action_name, opts, opts_path, types, default)
+function M.get_option(conn, opts, opts_path, types, default)
     local function get_val(data, path)
         local current = data
         for _, key in ipairs(path) do
@@ -26,7 +25,7 @@ function M.get_option(conn, action_name, opts, opts_path, types, default)
     local setting = get_val(opts, opts_path)
 
     if type(setting) == 'function' then
-        return setting(conn, action_name)
+        return setting(conn)
     end
 
     if type(types) == 'string' then

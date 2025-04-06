@@ -60,11 +60,10 @@ local function dadbod_bq_sql_results_csv_no_header(conn, sql)
     return result
 end
 
-local function get_regions(conn, action_name, plugin_opts)
+local function get_regions(conn, plugin_opts)
     local default = { 'region-eu', 'region-us' }
     local regions = utils.get_option(
         conn,
-        action_name,
         plugin_opts,
         { 'adapter', 'bigquery', 'regions' },
         { 'string', 'table' },
@@ -82,7 +81,7 @@ local function get_regions(conn, action_name, plugin_opts)
     return regions
 end
 
-local function object_list_tables(conn, regions)
+local function object_list_tables_in_regions(conn, regions)
     local sql = queries.objects.tables
     local items = {}
 
@@ -99,7 +98,7 @@ local function object_list_tables(conn, regions)
     return items
 end
 
-local function object_list_views(conn, regions)
+local function object_list_views_in_regions(conn, regions)
     -- return dadbod_bq_sql_results_csv_no_header(conn, queries.objects.views)
     local sql = queries.objects.views
     local items = {}
@@ -117,14 +116,14 @@ local function object_list_views(conn, regions)
     return items
 end
 
-local function object_list_relations(conn, regions)
+local function object_list_relations_in_regions(conn, regions)
     local items = {}
 
-    for _, item in ipairs(object_list_tables(conn, regions)) do
+    for _, item in ipairs(object_list_tables_in_regions(conn, regions)) do
         table.insert(items, item)
     end
 
-    for _, item in ipairs(object_list_views(conn, regions)) do
+    for _, item in ipairs(object_list_views_in_regions(conn, regions)) do
         table.insert(items, item)
     end
 
@@ -132,14 +131,20 @@ local function object_list_relations(conn, regions)
     return items
 end
 
+local function object_list_relations(conn, plugin_opts)
+    local regions = get_regions(conn, plugin_opts)
+    return object_list_relations_in_regions(conn, regions)
+end
+
+local function object_list_tables(conn, plugin_opts)
+    local regions = get_regions(conn, plugin_opts)
+    return object_list_tables_in_regions(conn, regions)
+end
 
 local actions = {
     describe = {
         label = "Describe Table or View",
-        object_list = function(conn, plugin_opts)
-            local regions = get_regions(conn, 'describe', plugin_opts)
-            return object_list_relations(conn, regions)
-        end,
+        object_list = object_list_relations,
         format_item = function(conn, obj, plugin_opts) return format_bq_object(obj.name) end,
         process_item = function(conn, obj, plugin_opts)
             local cmd = { 'show', format_bq_object(obj.name) }
@@ -159,10 +164,7 @@ local actions = {
     },
     show_sample = {
         label = "Sample Records",
-        object_list = function(conn, plugin_opts)
-            local regions = get_regions(conn, 'show_sample', plugin_opts)
-            return object_list_tables(conn, regions)
-        end,
+        object_list = object_list_tables,
         format_item = function(conn, obj, plugin_opts) return format_bq_object(obj.name) end,
         process_item = function(conn, obj, plugin_opts)
             local cmd = { 'head', format_bq_object(obj.name) }
@@ -172,10 +174,7 @@ local actions = {
     },
     show_filter = {
         label = "Show Records (with filter)",
-        object_list = function(conn, plugin_opts)
-            local regions = get_regions(conn, 'show_filter', plugin_opts)
-            return object_list_relations(conn, regions)
-        end,
+        object_list = object_list_relations,
         format_item = function(conn, obj, plugin_opts) return format_bq_object(obj.name) end,
         process_item = function(conn, obj, plugin_opts)
             local function run_sql(filter_condition)
@@ -191,10 +190,7 @@ local actions = {
     },
     yank_columns = {
         label = "Yank Columns",
-        object_list = function(conn, plugin_opts)
-            local regions = get_regions(conn, 'yank_columns', plugin_opts)
-            return object_list_relations(conn, regions)
-        end,
+        object_list = object_list_relations,
         format_item = function(conn, obj, plugin_opts) return format_bq_object(obj.name) end,
         process_item = function(conn, obj, plugin_opts)
             local sql = string.format(
@@ -216,10 +212,10 @@ local actions = {
     list_objects = {
         label = "List Objects",
         process_item = function(conn, obj, plugin_opts)
-            local regions = get_regions(conn, 'list_objects', plugin_opts)
+            local regions = get_regions(conn, plugin_opts)
 
-            local tables = object_list_tables(conn, regions)
-            local views = object_list_views(conn, regions)
+            local tables = object_list_tables_in_regions(conn, regions)
+            local views = object_list_views_in_regions(conn, regions)
 
             local table_list = {}
             for _, table_obj in ipairs(tables) do
@@ -242,10 +238,7 @@ local actions = {
     },
     show_distribution = {
         label = "Values Distribution (with filter)",
-        object_list = function(conn, plugin_opts)
-            local regions = get_regions(conn, 'show_distribution', plugin_opts)
-            return object_list_relations(conn, regions)
-        end,
+        object_list = object_list_relations,
         format_item = function(conn, obj, plugin_opts) return format_bq_object(obj.name) end,
         process_item = function(conn, obj, plugin_opts)
             local relation = obj.name
